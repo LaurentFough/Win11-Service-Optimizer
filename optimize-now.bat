@@ -1,9 +1,22 @@
 @echo off
 chcp 65001 >nul
-setlocal enabledelayedexpansion
+setlocal EnableExtensions EnableDelayedExpansion
 
 REM 🧹 Windows 11 Service Optimizer - One-Click Launcher
 REM This batch file makes optimization as simple as double-clicking!
+
+set "SCRIPT_DIR=%~dp0"
+if "%SCRIPT_DIR:~-1%"=="\" set "SCRIPT_DIR=%SCRIPT_DIR:~0,-1%"
+set "PS_SCRIPT=%SCRIPT_DIR%\disable-services.ps1"
+
+if not exist "%PS_SCRIPT%" (
+    echo ❌ Missing optimizer script: "%PS_SCRIPT%"
+    echo.
+    echo Please make sure disable-services.ps1 is in the same folder as this launcher.
+    echo.
+    pause
+    exit /b 1
+)
 
 echo.
 echo ╔══════════════════════════════════════════════════════════════╗
@@ -27,15 +40,28 @@ if %errorLevel% == 0 (
 )
 
 echo.
-echo 🔧 Setting execution policy...
-PowerShell -NoProfile -ExecutionPolicy Bypass -Command "Set-ExecutionPolicy Bypass -Scope Process -Force"
+echo 🔧 Setting execution policy for this session...
+PowerShell -NoProfile -ExecutionPolicy Bypass -Command "Set-ExecutionPolicy -Scope Process Bypass -Force" >nul 2>&1
+if errorlevel 1 (
+    echo ⚠️ PowerShell policy could not be updated for this session, but continuing anyway.
+) else (
+    echo ✅ PowerShell execution policy configured for this session
+)
 
 echo.
 echo 🚀 Starting Windows 11 Service Optimization...
 echo.
 
 REM Run the PowerShell script
-PowerShell -NoProfile -ExecutionPolicy Bypass -File "%~dp0disable-services.ps1"
+PowerShell -NoProfile -ExecutionPolicy Bypass -File "%PS_SCRIPT%"
+if errorlevel 1 (
+    echo.
+    echo ❌ Optimization script exited with an error.
+    echo Please review the PowerShell output above and try again.
+    echo.
+    pause >nul
+    exit /b 1
+)
 
 echo.
 echo ╔══════════════════════════════════════════════════════════════╗
@@ -52,3 +78,4 @@ echo IMPORTANT: Please restart your computer for all changes to take effect.
 echo.
 echo Press any key to exit...
 pause >nul
+exit /b 0
