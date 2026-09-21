@@ -1,6 +1,7 @@
 # 🧹 Windows 11 Service Optimizer Script
 # Run as Administrator
 
+[Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false)
 $ErrorActionPreference = 'Continue'
 $scriptRoot = if ($PSScriptRoot) { $PSScriptRoot } else { Split-Path -Parent $MyInvocation.MyCommand.Path }
 $logDirectory = Join-Path $scriptRoot 'logs'
@@ -149,5 +150,5 @@ if (`$null -eq `$latest) { Write-Error 'No numbered undo script was found.'; exi
 
 Write-Log "Completed run #$runNumber. Services changed: $changed; services skipped: $skipped; scheduled tasks captured: $($taskChanges.Count)."
 Write-Log "Undo script: $undoPath"
-Write-Host "`n📄 Detailed log: $logPath" -ForegroundColor Cyan
-Write-Host "↩️ Undo script for run #$runNumber: $undoPath" -ForegroundColor Yellow
+Write-Host ("`n📄 Detailed log: {0}" -f $logPath) -ForegroundColor Cyan
+Write-Host ("↩️ Undo script for run #{0}: {1}" -f $runNumber, $undoPath) -ForegroundColor Yellow
