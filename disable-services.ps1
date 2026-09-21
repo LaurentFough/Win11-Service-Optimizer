@@ -1,6 +1,19 @@
 # 🧹 Windows 11 Service Optimizer Script
 # Run as Administrator
 
+$ErrorActionPreference = 'Continue'
+
+# Verify admin rights
+$isAdmin = ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole(
+    [Security.Principal.WindowsBuiltInRole]::Administrator
+)
+
+if (-not $isAdmin) {
+    Write-Host "❌ This script must be run as Administrator." -ForegroundColor Red
+    Write-Host "Right-click PowerShell or the launcher and choose 'Run as administrator'." -ForegroundColor Yellow
+    exit 1
+}
+
 # Header with colors and emojis
 Write-Host "╔══════════════════════════════════════════════════════════════╗" -ForegroundColor Magenta
 Write-Host "║              🧹 Windows 11 Service Optimizer                ║" -ForegroundColor Magenta
@@ -28,7 +41,14 @@ $gamingServices = @("XblAuthManager", "XblGameSave", "XboxNetApiSvc", "XboxGipSv
 $deviceServices = @("bthserv", "lfsvc", "MapsBroker", "FrameServer", "WbioSrvc", "SCardSvr", "SensorService", "PhoneSvc")
 $legacyServices = @("Fax", "CscService", "RetailDemo", "Spooler", "WpnService", "DPS", "wisvc", "SessionEnv")
 
-$allServices = $privacyServices + $performanceServices + $networkServices + $gamingServices + $deviceServices + $legacyServices
+$allServices = @(
+    $privacyServices +
+    $performanceServices +
+    $networkServices +
+    $gamingServices +
+    $deviceServices +
+    $legacyServices
+)
 
 $totalServices = $allServices.Count
 $processed = 0
@@ -36,10 +56,17 @@ $disabled = 0
 $skipped = 0
 
 function Show-Progress {
-    param([int]$Processed, [int]$Total, [string]$ServiceName, [string]$Status)
-    $percentage = [math]::Round(($Processed / $Total) * 100, 1)
-    Write-Host "[$processed/$totalServices] $($percentage)% - $ServiceName " -NoNewline -ForegroundColor White
-    Write-Host "[$Status]" -ForegroundColor $statusColor
+    param(
+        [int]$Processed,
+        [int]$Total,
+        [string]$ServiceName,
+        [string]$Status,
+        [string]$StatusColor = 'White'
+    )
+
+    $percentage = [math]::Round(($Processed / [math]::Max(1, $Total)) * 100, 1)
+    Write-Host "[$Processed/$Total] $($percentage)% - $ServiceName " -NoNewline -ForegroundColor White
+    Write-Host "[$Status]" -ForegroundColor $StatusColor
 }
 
 # Process services with enhanced visual feedback
@@ -47,26 +74,26 @@ foreach ($svc in $allServices) {
     $processed++
 
     try {
-        # Show current operation
         Write-Host "🔧 Processing: " -NoNewline -ForegroundColor Yellow
         Write-Host "$svc " -NoNewline -ForegroundColor White
         Write-Host "..." -ForegroundColor Gray
 
-        # Stop and disable service
-        Stop-Service $svc -Force -ErrorAction SilentlyContinue | Out-Null
-        Set-Service $svc -StartupType Disabled -ErrorAction SilentlyContinue | Out-Null
+        $service = Get-Service -Name $svc -ErrorAction SilentlyContinue
+        if ($null -eq $service) {
+            throw "Service not found"
+        }
+
+        Stop-Service -Name $svc -Force -ErrorAction SilentlyContinue | Out-Null
+        Set-Service -Name $svc -StartupType Disabled -ErrorAction SilentlyContinue | Out-Null
 
         $disabled++
-        $statusColor = "Green"
-        Show-Progress -Processed $processed -Total $totalServices -ServiceName $svc -Status "✅ DISABLED"
-
-    } catch {
+        Show-Progress -Processed $processed -Total $totalServices -ServiceName $svc -Status "✅ DISABLED" -StatusColor 'Green'
+    }
+    catch {
         $skipped++
-        $statusColor = "DarkGray"
-        Show-Progress -Processed $processed -Total $totalServices -ServiceName $svc -Status "⏭️ SKIPPED"
+        Show-Progress -Processed $processed -Total $totalServices -ServiceName $svc -Status "⏭️ SKIPPED" -StatusColor 'DarkGray'
     }
 
-    # Brief pause for visual effect
     Start-Sleep -Milliseconds 200
 }
 
@@ -80,22 +107,26 @@ Write-Host ""
 Write-Host "🔍 Scanning for telemetry scheduled tasks..." -ForegroundColor Cyan
 
 # Get and disable telemetry tasks
-$telemetryTasks = Get-ScheduledTask | Where-Object { $_.TaskName -match "Telemetry|CEIP|Customer" } | Select-Object -ExpandProperty TaskName
+$telemetryTasks = @(Get-ScheduledTask -ErrorAction SilentlyContinue | Where-Object {
+    $_.TaskName -match 'Telemetry|CEIP|Customer'
+} | Select-Object -ExpandProperty TaskName)
 
 if ($telemetryTasks.Count -gt 0) {
     Write-Host "📋 Found $($telemetryTasks.Count) telemetry tasks to disable:" -ForegroundColor Yellow
 
     foreach ($task in $telemetryTasks) {
         try {
-            Disable-ScheduledTask -TaskName $task -ErrorAction SilentlyContinue | Out-Null
+            Disable-ScheduledTask -TaskName $task -ErrorAction Stop | Out-Null
             Write-Host "  ❌ Disabled: " -NoNewline -ForegroundColor Red
             Write-Host "$task" -ForegroundColor DarkGray
-        } catch {
+        }
+        catch {
             Write-Host "  ⚠️ Failed to disable: " -NoNewline -ForegroundColor DarkYellow
             Write-Host "$task" -ForegroundColor DarkGray
         }
     }
-} else {
+}
+else {
     Write-Host "✅ No telemetry scheduled tasks found" -ForegroundColor Green
 }
 
@@ -136,6 +167,7 @@ try {
     [console]::beep(800, 300)
     Start-Sleep -Milliseconds 200
     [console]::beep(1000, 500)
-} catch {
+}
+catch {
     # Ignore beep errors
 }
