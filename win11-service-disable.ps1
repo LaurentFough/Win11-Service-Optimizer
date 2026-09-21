@@ -39,7 +39,7 @@ Write-Log "Log file: $logPath"
 
 $privacyServices = @('DiagTrack', 'dmwappushservice', 'WerSvc')
 $performanceServices = @('SysMain', 'WSearch')
-$networkServices = @('RemoteRegistry', 'TermService', 'RoutingAndRemoteAccess', 'SharedAccess')
+$networkServices = @('RemoteRegistry', 'RoutingAndRemoteAccess', 'SharedAccess')
 $gamingServices = @('XblAuthManager', 'XblGameSave', 'XboxNetApiSvc', 'XboxGipSvc')
 $deviceServices = @('bthserv', 'lfsvc', 'MapsBroker', 'FrameServer', 'WbioSrvc', 'SCardSvr', 'SensorService', 'PhoneSvc')
 $legacyServices = @('Fax', 'CscService', 'RetailDemo', 'Spooler', 'WpnService', 'DPS', 'wisvc', 'SessionEnv')
