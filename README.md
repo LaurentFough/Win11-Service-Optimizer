@@ -58,7 +58,7 @@
 **🖱️ Double-click the desktop shortcut after setup!**
 
 #### Automated Setup (First Time Only)
-1. **Right-click `setup-optimizer.bat`** and select **"Run as Administrator"**
+1. **Right-click `win11-service-optimizer-setup.bat`** and select **"Run as Administrator"**
 2. **Follow the setup wizard** - it configures everything automatically
 3. **Desktop shortcut is created** for future use
 
@@ -72,20 +72,20 @@
 #### Method 1: One-Click Launcher
 ```batch
 # Right-click and "Run as Administrator"
-optimize-now.bat
+win11-service-optimize-now.bat
 ```
 
 #### Method 2: PowerShell (Traditional)
 ```powershell
 # Run PowerShell as Administrator
 Set-ExecutionPolicy Bypass -Scope Process -Force
-.\disable-services.ps1
+.\win11-service-disable.ps1
 ```
 
 #### Method 3: Direct Execution
 ```powershell
 # Navigate to project folder and run:
-PowerShell -ExecutionPolicy Bypass -File "disable-services.ps1"
+PowerShell -ExecutionPolicy Bypass -File "win11-service-disable.ps1"
 ```
 
 ### ✅ Verification
@@ -101,13 +101,13 @@ Get-Service | Where-Object {$_.StartType -eq "Disabled"}
 
 **Standard Optimization (Recommended):**
 ```powershell
-.\disable-services.ps1
+.\win11-service-disable.ps1
 ```
 
 **With Custom Execution Policy:**
 ```powershell
 Set-ExecutionPolicy Bypass -Scope Process -Force
-.\disable-services.ps1
+.\win11-service-disable.ps1
 ```
 
 ### What Gets Optimized
@@ -241,29 +241,30 @@ Start-Service "DiagTrack"
 
 ```
 windows11-service-optimizer/
-├── 📋 README.md              # This comprehensive documentation
-├── 📜 disable-services.ps1   # Main optimization script (colorful!)
-├── 📄 LICENSE                # MIT license file
-├── 🔒 SECURITY.md            # Security policy & vulnerability reporting
-├── 👥 CODE_OF_CONDUCT.md     # Community guidelines
-├── 🤝 CONTRIBUTING.md        # Contribution guidelines
-├── 🚀 optimize-now.bat       # One-click launcher
-├── ⚙️ setup-optimizer.bat     # Automated setup script
-└── 📋 Quick-Start.bat        # Quick start guide
+├── 📋 README.md                          # This comprehensive documentation
+├── 📄 LICENSE                            # MIT license file
+├── 🔒 SECURITY.md                        # Security policy & vulnerability reporting
+├── 👥 CODE_OF_CONDUCT.md                 # Community guidelines
+├── 🤝 CONTRIBUTING.md                    # Contribution guidelines
+├── 📜 win11-service-disable.ps1          # Main optimization script (colorful!)
+├── 🚀 win11-service-optimize-now.bat     # One-click launcher
+├── ⚙️ win11-service-optimizer-setup.bat  # Automated setup script
+├── 📋 win11-service-quick-start.bat      # Quick start guide
+└── 📜 win11-service-undo-last-run.ps1    # Undo Last (#'d) Run of Service Disable Script
 ```
 
 ### 🎯 One-Click Ready Features
 
 🖱️ **Desktop Shortcut Creation**
-- `setup-optimizer.bat` creates a desktop shortcut automatically
+- `win11-service-optimizer-setup.bat` creates a desktop shortcut automatically
 - Double-click optimization after initial setup
 
 🚀 **Automated Launchers**
-- `optimize-now.bat` - Checks admin privileges and runs optimization
-- `Quick-Start.bat` - Interactive guide showing all usage methods
+- `win11-service-optimize-now.bat` - Checks admin privileges and runs optimization
+- `win11-service-quick-start.bat` - Interactive guide showing all usage methods
 
 ⚙️ **Smart Setup**
-- `setup-optimizer.bat` configures PowerShell execution policy
+- `win11-service-optimizer-setup.bat` configures PowerShell execution policy
 - Creates desktop shortcuts and tests functionality
 - Provides clear setup completion feedback
 
@@ -293,7 +294,7 @@ Get-Process | Where-Object {$_.CPU -gt 0} | Sort-Object CPU -Descending | Select
 You can modify the script to include/exclude specific services:
 
 ```powershell
-# Edit the $services array in disable-services.ps1
+# Edit the $services array in win11-service-disable.ps1
 $services = @(
     "DiagTrack",        # Connected User Experiences and Telemetry
     "dmwappushservice", # Device Management Wireless Application Protocol

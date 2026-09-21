@@ -20,7 +20,7 @@ if not exist "%PS_SCRIPT%" (
 
 echo.
 echo ╔══════════════════════════════════════════════════════════════╗
-echo ║              🧹 Windows 11 Service Optimizer                ║
+echo ║              🧹 Windows 11 Service Optimizer                 ║
 echo ║                 🚀 One-Click Optimization                    ║
 echo ╚══════════════════════════════════════════════════════════════╝
 echo.
@@ -65,7 +65,7 @@ if errorlevel 1 (
 
 echo.
 echo ╔══════════════════════════════════════════════════════════════╗
-echo ║                 🎉 Optimization Complete!                 ║
+echo ║                 🎉 Optimization Complete!                    ║
 echo ╚══════════════════════════════════════════════════════════════╝
 echo.
 echo The optimization has finished! Your computer will benefit from:

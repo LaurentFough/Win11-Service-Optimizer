@@ -7,14 +7,14 @@ REM This script sets up everything needed for one-click optimization
 
 set "SCRIPT_DIR=%~dp0"
 if "%SCRIPT_DIR:~-1%"=="\" set "SCRIPT_DIR=%SCRIPT_DIR:~0,-1%"
-set "TARGET=%SCRIPT_DIR%\optimize-now.bat"
-set "PS_SCRIPT=%SCRIPT_DIR%\disable-services.ps1"
+set "TARGET=%SCRIPT_DIR%\win11-service-optimize-now.bat"
+set "PS_SCRIPT=%SCRIPT_DIR%\win11-service-service-disable.ps1"
 set "SHORTCUT=%USERPROFILE%\Desktop\Win11 Service Optimizer.lnk"
 
 if not exist "%TARGET%" (
     echo ❌ Missing launcher: "%TARGET%"
     echo.
-    echo Please make sure optimize-now.bat is present in the same folder as this setup script.
+    echo Please make sure win11-service-optimize-now.bat is present in the same folder as this setup script.
     echo.
     pause
     exit /b 1
@@ -23,7 +23,7 @@ if not exist "%TARGET%" (
 if not exist "%PS_SCRIPT%" (
     echo ❌ Missing PowerShell optimizer: "%PS_SCRIPT%"
     echo.
-    echo Please make sure disable-services.ps1 is present in the same folder as this setup script.
+    echo Please make sure win11-service-service-disable.ps1 is present in the same folder as this setup script.
     echo.
     pause
     exit /b 1
@@ -31,8 +31,8 @@ if not exist "%PS_SCRIPT%" (
 
 echo.
 echo ╔══════════════════════════════════════════════════════════════╗
-echo ║            🧹 Win11 Service Optimizer Setup          ║
-echo ║                 🚀 Automated Installation                 ║
+echo ║            🧹 Win11 Service Optimizer Setup                  ║
+echo ║                 🚀 Automated Installation                    ║
 echo ╚══════════════════════════════════════════════════════════════╝
 echo.
 
@@ -87,7 +87,7 @@ if errorlevel 1 (
 
 echo.
 echo ╔══════════════════════════════════════════════════════════════╗
-echo ║                    📋 Setup Complete!                     ║
+echo ║                    📋 Setup Complete!                        ║
 echo ╚══════════════════════════════════════════════════════════════╝
 echo.
 echo 🎉 Win11 Service Optimizer is now ready to use!
@@ -103,8 +103,9 @@ echo   2. The optimization will run automatically
 echo   3. Restart your computer when prompted
 echo.
 echo 🔧 ADVANCED USAGE:
-echo   • Run 'optimize-now.bat' directly from this folder
-echo   • Use PowerShell: .\disable-services.ps1
+echo   • Run 'win11-service-optimize-now.bat' directly from this folder
+echo   • Disable Services (PowerShell): .\win11-service-disable.ps1
+echo   • Undo Last Run    (PowerShell): .\win11-service-undo-last-run.ps1
 echo.
 echo Press any key to exit setup...
 pause >nul
