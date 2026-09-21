@@ -2,14 +2,14 @@
 chcp 65001 >nul
 setlocal EnableExtensions EnableDelayedExpansion
 
-REM 🧹 Windows 11 Service Optimizer - Automated Setup
+REM 🧹 Win11 Service Optimizer - Automated Setup
 REM This script sets up everything needed for one-click optimization
 
 set "SCRIPT_DIR=%~dp0"
 if "%SCRIPT_DIR:~-1%"=="\" set "SCRIPT_DIR=%SCRIPT_DIR:~0,-1%"
 set "TARGET=%SCRIPT_DIR%\optimize-now.bat"
 set "PS_SCRIPT=%SCRIPT_DIR%\disable-services.ps1"
-set "SHORTCUT=%USERPROFILE%\Desktop\Windows 11 Optimizer.lnk"
+set "SHORTCUT=%USERPROFILE%\Desktop\Win11 Service Optimizer.lnk"
 
 if not exist "%TARGET%" (
     echo ❌ Missing launcher: "%TARGET%"
@@ -31,7 +31,7 @@ if not exist "%PS_SCRIPT%" (
 
 echo.
 echo ╔══════════════════════════════════════════════════════════════╗
-echo ║            🧹 Windows 11 Service Optimizer Setup          ║
+echo ║            🧹 Win11 Service Optimizer Setup          ║
 echo ║                 🚀 Automated Installation                 ║
 echo ╚══════════════════════════════════════════════════════════════╝
 echo.
@@ -90,7 +90,7 @@ echo ╔════════════════════════
 echo ║                    📋 Setup Complete!                     ║
 echo ╚══════════════════════════════════════════════════════════════╝
 echo.
-echo 🎉 Windows 11 Service Optimizer is now ready to use!
+echo 🎉 Win11 Service Optimizer is now ready to use!
 echo.
 echo 📁 WHAT WAS INSTALLED:
 echo   ✅ PowerShell execution policy configured for this session
@@ -98,7 +98,7 @@ echo   ✅ Desktop shortcut created
 echo   ✅ One-click optimization ready
 echo.
 echo 🚀 HOW TO USE:
-echo   1. Double-click the 'Windows 11 Optimizer' icon on your desktop
+echo   1. Double-click the 'Win11 Service Optimizer' icon on your desktop
 echo   2. The optimization will run automatically
 echo   3. Restart your computer when prompted
 echo.
@@ -109,18 +109,18 @@ echo.
 echo Press any key to exit setup...
 pause >nul
 
-REM Optional: Ask if user wants to run optimization now
+REM Optional: Ask if user wants to run service optimization now
 echo.
-echo Would you like to run the optimization now? (Y/N)
+echo Would you like to run the service optimization now? (Y/N)
 set /p "run_now="
 if /i "%run_now%"=="Y" (
     if exist "%TARGET%" (
         echo.
-        echo 🚀 Starting optimization...
+        echo 🚀 Starting service optimization...
         call "%TARGET%"
     ) else (
         echo.
-        echo ❌ Cannot start optimization because '%TARGET%' was not found.
+        echo ❌ Cannot start service optimization because '%TARGET%' was not found.
         echo.
         pause
     )
