@@ -2,172 +2,139 @@
 # Run as Administrator
 
 $ErrorActionPreference = 'Continue'
+$scriptRoot = if ($PSScriptRoot) { $PSScriptRoot } else { Split-Path -Parent $MyInvocation.MyCommand.Path }
+$logDirectory = Join-Path $scriptRoot 'logs'
+$null = New-Item -ItemType Directory -Path $logDirectory -Force -ErrorAction SilentlyContinue
+$runStamp = Get-Date -Format 'yyyyMMdd-HHmmss'
+$logPath = Join-Path $logDirectory "optimization-$runStamp.log"
+$statePath = Join-Path $scriptRoot 'optimizer-last-run.json'
+$undoPath = Join-Path $scriptRoot 'undo-last-run.ps1'
 
-# Verify admin rights
+function Write-Log {
+    param([string]$Message, [string]$Level = 'INFO')
+    $line = "{0} [{1}] {2}" -f (Get-Date -Format 'yyyy-MM-dd HH:mm:ss'), $Level, $Message
+    Add-Content -LiteralPath $logPath -Value $line -Encoding UTF8
+    Write-Host $Message
+}
+
 $isAdmin = ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole(
     [Security.Principal.WindowsBuiltInRole]::Administrator
 )
-
 if (-not $isAdmin) {
     Write-Host "❌ This script must be run as Administrator." -ForegroundColor Red
-    Write-Host "Right-click PowerShell or the launcher and choose 'Run as administrator'." -ForegroundColor Yellow
     exit 1
 }
 
-# Header with colors and emojis
-Write-Host "╔══════════════════════════════════════════════════════════════╗" -ForegroundColor Magenta
-Write-Host "║              🧹 Windows 11 Service Optimizer                ║" -ForegroundColor Magenta
-Write-Host "║                 🚀 Performance & Privacy Boost              ║" -ForegroundColor Magenta
-Write-Host "╚══════════════════════════════════════════════════════════════╝" -ForegroundColor Magenta
-Write-Host ""
+Write-Log 'Starting Windows 11 Service Optimizer.'
+Write-Log "Computer: $env:COMPUTERNAME; User: $env:USERDOMAIN\$env:USERNAME"
+Write-Log "Log file: $logPath"
 
-# Startup message with animation effect
-Write-Host "🔄 Initializing service optimization..." -ForegroundColor Yellow
-Start-Sleep -Milliseconds 800
-Write-Host "✅ Administrator privileges confirmed" -ForegroundColor Green
-Start-Sleep -Milliseconds 400
-Write-Host "📋 Loading service list..." -ForegroundColor Cyan
-Start-Sleep -Milliseconds 400
+$privacyServices = @('DiagTrack', 'dmwappushservice', 'WerSvc')
+$performanceServices = @('SysMain', 'WSearch')
+$networkServices = @('RemoteRegistry', 'TermService', 'RoutingAndRemoteAccess', 'SharedAccess')
+$gamingServices = @('XblAuthManager', 'XblGameSave', 'XboxNetApiSvc', 'XboxGipSvc')
+$deviceServices = @('bthserv', 'lfsvc', 'MapsBroker', 'FrameServer', 'WbioSrvc', 'SCardSvr', 'SensorService', 'PhoneSvc')
+$legacyServices = @('Fax', 'CscService', 'RetailDemo', 'Spooler', 'WpnService', 'DPS', 'wisvc', 'SessionEnv')
+$allServices = @($privacyServices + $performanceServices + $networkServices + $gamingServices + $deviceServices + $legacyServices) | Select-Object -Unique
 
-Write-Host ""
-Write-Host "🚀 Starting service optimization process..." -ForegroundColor Green
-Write-Host ""
-
-# Service categories with visual organization
-$privacyServices = @("DiagTrack", "dmwappushservice", "WerSvc")
-$performanceServices = @("SysMain", "WSearch")
-$networkServices = @("RemoteRegistry", "TermService", "RoutingAndRemoteAccess", "SharedAccess")
-$gamingServices = @("XblAuthManager", "XblGameSave", "XboxNetApiSvc", "XboxGipSvc")
-$deviceServices = @("bthserv", "lfsvc", "MapsBroker", "FrameServer", "WbioSrvc", "SCardSvr", "SensorService", "PhoneSvc")
-$legacyServices = @("Fax", "CscService", "RetailDemo", "Spooler", "WpnService", "DPS", "wisvc", "SessionEnv")
-
-$allServices = @(
-    $privacyServices +
-    $performanceServices +
-    $networkServices +
-    $gamingServices +
-    $deviceServices +
-    $legacyServices
-)
-
-$totalServices = $allServices.Count
+$serviceChanges = [System.Collections.Generic.List[object]]::new()
+$taskChanges = [System.Collections.Generic.List[object]]::new()
 $processed = 0
-$disabled = 0
+$changed = 0
 $skipped = 0
 
-function Show-Progress {
-    param(
-        [int]$Processed,
-        [int]$Total,
-        [string]$ServiceName,
-        [string]$Status,
-        [string]$StatusColor = 'White'
-    )
-
-    $percentage = [math]::Round(($Processed / [math]::Max(1, $Total)) * 100, 1)
-    Write-Host "[$Processed/$Total] $($percentage)% - $ServiceName " -NoNewline -ForegroundColor White
-    Write-Host "[$Status]" -ForegroundColor $StatusColor
-}
-
-# Process services with enhanced visual feedback
 foreach ($svc in $allServices) {
     $processed++
-
     try {
-        Write-Host "🔧 Processing: " -NoNewline -ForegroundColor Yellow
-        Write-Host "$svc " -NoNewline -ForegroundColor White
-        Write-Host "..." -ForegroundColor Gray
+        $service = Get-CimInstance -ClassName Win32_Service -Filter "Name='$svc'" -ErrorAction Stop
+        if ($null -eq $service) { throw 'Service not found' }
 
-        $service = Get-Service -Name $svc -ErrorAction SilentlyContinue
-        if ($null -eq $service) {
-            throw "Service not found"
+        $originalStartMode = $service.StartMode
+        $originalStatus = $service.State
+        $record = [pscustomobject]@{
+            Name = $svc
+            OriginalStartMode = $originalStartMode
+            OriginalStatus = $originalStatus
         }
 
-        Stop-Service -Name $svc -Force -ErrorAction SilentlyContinue | Out-Null
-        Set-Service -Name $svc -StartupType Disabled -ErrorAction SilentlyContinue | Out-Null
-
-        $disabled++
-        Show-Progress -Processed $processed -Total $totalServices -ServiceName $svc -Status "✅ DISABLED" -StatusColor 'Green'
+        $stopResult = Stop-Service -Name $svc -Force -ErrorAction SilentlyContinue
+        Set-Service -Name $svc -StartupType Disabled -ErrorAction Stop
+        $serviceChanges.Add($record)
+        $changed++
+        Write-Log "DISABLED service $svc (previous startup mode: $originalStartMode; previous status: $originalStatus)."
     }
     catch {
         $skipped++
-        Show-Progress -Processed $processed -Total $totalServices -ServiceName $svc -Status "⏭️ SKIPPED" -StatusColor 'DarkGray'
+        Write-Log "SKIPPED service $svc: $($_.Exception.Message)" 'WARN'
     }
-
-    Start-Sleep -Milliseconds 200
 }
 
-# Scheduled tasks section with enhanced visuals
-Write-Host ""
-Write-Host "╔══════════════════════════════════════════════════════════════╗" -ForegroundColor Blue
-Write-Host "║              📅 Scheduled Tasks Cleanup                     ║" -ForegroundColor Blue
-Write-Host "╚══════════════════════════════════════════════════════════════╝" -ForegroundColor Blue
-
-Write-Host ""
-Write-Host "🔍 Scanning for telemetry scheduled tasks..." -ForegroundColor Cyan
-
-# Get and disable telemetry tasks
-$telemetryTasks = @(Get-ScheduledTask -ErrorAction SilentlyContinue | Where-Object {
-    $_.TaskName -match 'Telemetry|CEIP|Customer'
-} | Select-Object -ExpandProperty TaskName)
-
-if ($telemetryTasks.Count -gt 0) {
-    Write-Host "📋 Found $($telemetryTasks.Count) telemetry tasks to disable:" -ForegroundColor Yellow
+try {
+    $telemetryTasks = @(Get-ScheduledTask -ErrorAction Stop | Where-Object {
+        $_.TaskName -match 'Telemetry|CEIP|Customer'
+    })
 
     foreach ($task in $telemetryTasks) {
         try {
-            Disable-ScheduledTask -TaskName $task -ErrorAction Stop | Out-Null
-            Write-Host "  ❌ Disabled: " -NoNewline -ForegroundColor Red
-            Write-Host "$task" -ForegroundColor DarkGray
+            $taskChanges.Add([pscustomobject]@{
+                TaskName = $task.TaskName
+                TaskPath = $task.TaskPath
+                OriginalState = [string]$task.State
+            })
+            Disable-ScheduledTask -TaskName $task.TaskName -TaskPath $task.TaskPath -ErrorAction Stop | Out-Null
+            Write-Log "DISABLED scheduled task $($task.TaskPath)$($task.TaskName) (previous state: $($task.State))."
         }
         catch {
-            Write-Host "  ⚠️ Failed to disable: " -NoNewline -ForegroundColor DarkYellow
-            Write-Host "$task" -ForegroundColor DarkGray
+            Write-Log "SKIPPED scheduled task $($task.TaskPath)$($task.TaskName): $($_.Exception.Message)" 'WARN'
         }
     }
 }
-else {
-    Write-Host "✅ No telemetry scheduled tasks found" -ForegroundColor Green
-}
-
-# Final summary with enhanced visuals
-Write-Host ""
-Write-Host "╔══════════════════════════════════════════════════════════════╗" -ForegroundColor Green
-Write-Host "║                    📊 Optimization Complete!                ║" -ForegroundColor Green
-Write-Host "╚══════════════════════════════════════════════════════════════╝" -ForegroundColor Green
-
-Write-Host ""
-Write-Host "📈 SUMMARY:" -ForegroundColor Cyan
-Write-Host "  ✅ Services Disabled: " -NoNewline -ForegroundColor Green
-Write-Host "$disabled" -ForegroundColor White
-Write-Host "  ⏭️ Services Skipped: " -NoNewline -ForegroundColor DarkGray
-Write-Host "$skipped" -ForegroundColor White
-Write-Host "  📊 Total Processed: " -NoNewline -ForegroundColor Yellow
-Write-Host "$totalServices" -ForegroundColor White
-
-Write-Host ""
-Write-Host "🎯 PERFORMANCE BENEFITS:" -ForegroundColor Green
-Write-Host "  🚀 Faster boot times" -ForegroundColor White
-Write-Host "  💾 Lower memory usage" -ForegroundColor White
-Write-Host "  🔒 Enhanced privacy" -ForegroundColor White
-Write-Host "  🛡️ Reduced background activity" -ForegroundColor White
-
-Write-Host ""
-Write-Host "⚠️ IMPORTANT:" -ForegroundColor Yellow
-Write-Host "  • Restart your computer for all changes to take effect" -ForegroundColor White
-Write-Host "  • Use System Restore if you encounter any issues" -ForegroundColor White
-Write-Host "  • All changes can be reversed if needed" -ForegroundColor White
-
-Write-Host ""
-Write-Host "🎉 Optimization completed successfully!" -ForegroundColor Green
-Write-Host "   Thank you for using Windows 11 Service Optimizer!" -ForegroundColor Magenta
-
-# Beep sound for completion (optional)
-try {
-    [console]::beep(800, 300)
-    Start-Sleep -Milliseconds 200
-    [console]::beep(1000, 500)
-}
 catch {
-    # Ignore beep errors
+    Write-Log "Could not enumerate scheduled tasks: $($_.Exception.Message)" 'WARN'
 }
+
+$state = [pscustomobject]@{
+    GeneratedAt = (Get-Date).ToString('o')
+    ComputerName = $env:COMPUTERNAME
+    LogPath = $logPath
+    Services = @($serviceChanges)
+    ScheduledTasks = @($taskChanges)
+}
+$state | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath $statePath -Encoding UTF8
+
+if (Test-Path -LiteralPath $undoPath) { Remove-Item -LiteralPath $undoPath -Force }
+@'
+# Generated by Windows 11 Service Optimizer. Restores the previous run only.
+# Run as Administrator.
+$ErrorActionPreference = 'Continue'
+$root = if ($PSScriptRoot) { $PSScriptRoot } else { Split-Path -Parent $MyInvocation.MyCommand.Path }
+$statePath = Join-Path $root 'optimizer-last-run.json'
+if (-not (Test-Path -LiteralPath $statePath)) { Write-Error "State file not found: $statePath"; exit 1 }
+$isAdmin = ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+if (-not $isAdmin) { Write-Error 'This script must be run as Administrator.'; exit 1 }
+$state = Get-Content -LiteralPath $statePath -Raw | ConvertFrom-Json
+foreach ($service in @($state.Services)) {
+    try {
+        $startupType = switch ($service.OriginalStartMode) { 'Auto' { 'Automatic' } 'Manual' { 'Manual' } 'Disabled' { 'Disabled' } default { 'Manual' } }
+        Set-Service -Name $service.Name -StartupType $startupType -ErrorAction Stop
+        if ($service.OriginalStatus -eq 'Running') { Start-Service -Name $service.Name -ErrorAction Stop }
+        Write-Host "Restored service: $($service.Name)" -ForegroundColor Green
+    } catch { Write-Warning "Could not restore service $($service.Name): $($_.Exception.Message)" }
+}
+foreach ($task in @($state.ScheduledTasks)) {
+    try {
+        if ($task.OriginalState -eq 'Disabled') {
+            Disable-ScheduledTask -TaskName $task.TaskName -TaskPath $task.TaskPath -ErrorAction Stop | Out-Null
+        } else {
+            Enable-ScheduledTask -TaskName $task.TaskName -TaskPath $task.TaskPath -ErrorAction Stop | Out-Null
+        }
+        Write-Host "Restored scheduled task: $($task.TaskPath)$($task.TaskName)" -ForegroundColor Green
+    } catch { Write-Warning "Could not restore scheduled task $($task.TaskPath)$($task.TaskName): $($_.Exception.Message)" }
+}
+Write-Host 'Undo completed. Review any warnings above.' -ForegroundColor Cyan
+'@ | Set-Content -LiteralPath $undoPath -Encoding UTF8
+
+Write-Log "Completed. Services changed: $changed; services skipped: $skipped; scheduled tasks captured: $($taskChanges.Count)."
+Write-Log "Undo script: $undoPath"
+Write-Host "`n📄 Detailed log: $logPath" -ForegroundColor Cyan
+Write-Host "↩️ Undo script: $undoPath" -ForegroundColor Yellow
